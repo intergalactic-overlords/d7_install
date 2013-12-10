@@ -1,0 +1,74 @@
+; $Id$
+name = installer
+description = Install with commonly used features pre-configured.
+version = VERSION
+core = 7.x
+
+; core
+dependencies[] = block
+dependencies[] = contact
+dependencies[] = contextual
+dependencies[] = dblog
+dependencies[] = field
+dependencies[] = field_ui
+dependencies[] = file
+dependencies[] = image
+dependencies[] = list
+dependencies[] = menu
+dependencies[] = node
+dependencies[] = number
+dependencies[] = options
+dependencies[] = path
+dependencies[] = update
+dependencies[] = shortcut
+dependencies[] = syslog
+dependencies[] = taxonomy
+dependencies[] = text
+dependencies[] = toolbar
+
+; structure
+dependencies[] = ctools
+dependencies[] = views
+dependencies[] = views_ui
+dependencies[] = panels
+dependencies[] = panels_ipe
+dependencies[] = views_content
+dependencies[] = pm_existing_pages
+dependencies[] = ds
+dependencies[] = ds_extras
+dependencies[] = ds_ui
+dependencies[] = field_group
+dependencies[] = entity
+; dependencies[] = entityreference
+dependencies[] = block_class
+dependencies[] = elements
+dependencies[] = html5_tools
+; dependencies[] = trimmed_plaintext
+
+; admin
+dependencies[] = backup_migrate
+dependencies[] = devel
+dependencies[] = filter_perms
+dependencies[] = googleanalytics
+dependencies[] = module_filter
+
+; config
+dependencies[] = addanother
+dependencies[] = token
+dependencies[] = pathauto
+
+; wysiwyg
+dependencies[] = ckeditor
+dependencies[] = linkit
+
+; SEO
+; dependencies[] = metatag
+; dependencies[] = page_title
+dependencies[] = xmlsitemap
+dependencies[] = redirect
+dependencies[] = globalredirect
+
+; caching
+; dependencies[] = memcache
+
+files[] = installer.profile

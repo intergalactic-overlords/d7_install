@@ -1,0 +1,554 @@
+<?php
+
+function installer_install() {
+
+  installer_enable_admin_theme();
+
+  installer_setup_content_types();
+
+  installer_create_home_link();
+
+  installer_setup_roles_formats_permissions();
+
+  installer_setup_textformat();
+
+  installer_setup_ckeditor();
+
+  installer_setup_linkit();
+
+  // File paths
+  variable_set('file_temporary_path', '/tmp');
+  variable_set('file_public_path', 'sites/default/files');
+
+  // Image quality
+  variable_set('image_jpeg_quality', '100');
+
+  // date and time
+  variable_set('site_default_country', 'BE');
+  variable_set('date_first_day', '1');
+  variable_set('date_default_timezone', 'Europe/Brussels');
+  variable_set('configurable_timezones', '0');
+
+  // date formats
+  variable_set('date_format_long', 'l, j F, Y - H:i');
+  variable_set('date_format_medium', 'j F, Y - H:i');
+  variable_set('date_format_short', 'd/m/Y - H:i');
+
+  // Allow visitor account creation with administrative approval.
+  variable_set('user_register', USER_REGISTER_ADMINISTRATORS_ONLY);
+
+  // Disable error reporting to display
+  variable_set('error_level', 0);
+
+  // Set all pathauto patterns to empty
+  variable_set('pathauto_node_pattern', '');
+  variable_set('pathauto_blog_pattern', '');
+  variable_set('pathauto_node_page_pattern', '');
+  variable_set('pathauto_forum_pattern', '');
+  variable_set('pathauto_taxonomy_term_pattern', '');
+  variable_set('pathauto_user_pattern', '');
+  //variable_set('pathauto_transliterate', '1');
+
+  // Update notifications e-mail address.
+  variable_set('update_notify_emails', 'test@test.test');
+
+  // Update the menu router information.
+  menu_rebuild();
+}
+
+/**
+* Setup roles, formats and permissions
+*/
+function installer_setup_roles_formats_permissions() {
+
+  // Add text formats.
+  $raw_format = array(
+    'format' => 'raw',
+    'name' => 'Raw',
+    'weight' => 2,
+    'filters' => array(),
+  );
+  $raw_format = (object) $raw_format;
+  filter_format_save($raw_format);
+  $raw_permission = filter_permission_name($raw_format);
+
+  $filtered_html_format = array(
+    'format' => 'filtered_html',
+    'name' => 'Filtered HTML',
+    'weight' => 1,
+    'filters' => array(
+      // URL filter.
+      'filter_url' => array(
+        'weight' => 0,
+        'status' => 1,
+      ),
+      // HTML filter.
+      'filter_html' => array(
+        'weight' => 1,
+        'status' => 1,
+      ),
+      // Line break filter.
+      'filter_autop' => array(
+        'weight' => 2,
+        'status' => 1,
+      ),
+      // HTML corrector filter.
+      'filter_htmlcorrector' => array(
+        'weight' => 10,
+        'status' => 1,
+      ),
+      // SpamSpan filter.
+      'spamspan' => array(
+        'weight' => 11,
+        'status' => 1,
+      ),
+      // Pathologic filter.
+      'pathologic' => array(
+        'weight' => 11,
+        'status' => 1,
+        'settings' => array('local_paths' => '/', 'absolute' => FALSE),
+      ),
+      // SpamSpan filter.
+      'image_resize_filter' => array(
+        'weight' => 11,
+        'status' => 1,
+      ),
+    ),
+  );
+  $filtered_html_format = (object) $filtered_html_format;
+  filter_format_save($filtered_html_format);
+  $filtered_html_permission = filter_permission_name($filtered_html_format);
+
+  $full_html_format = array(
+    'format' => 'full_html',
+    'name' => 'Full HTML',
+    'weight' => 0,
+    'filters' => array(
+      // URL filter.
+      'filter_url' => array(
+        'weight' => 0,
+        'status' => 1,
+      ),
+      // Line break filter.
+      'filter_autop' => array(
+        'weight' => 1,
+        'status' => 1,
+      ),
+      // HTML corrector filter.
+      'filter_htmlcorrector' => array(
+        'weight' => 10,
+        'status' => 1,
+      ),
+      // SpamSpan filter.
+      'spamspan' => array(
+        'weight' => 11,
+        'status' => 1,
+      ),
+      // Pathologic filter.
+      'pathologic' => array(
+        'weight' => 11,
+        'status' => 1,
+        'settings' => array('local_paths' => '/', 'absolute' => FALSE),
+      ),
+      // SpamSpan filter.
+      'image_resize_filter' => array(
+        'weight' => 11,
+        'status' => 1,
+      ),
+    ),
+  );
+  $full_html_format = (object) $full_html_format;
+  filter_format_save($full_html_format);
+  $full_html_permission = filter_permission_name($full_html_format);
+
+  // Create a role for editors.
+  $editor_role = new stdClass();
+  $editor_role->name = 'Editor';
+  $editor_role->weight = 3;
+  user_role_save($editor_role);
+
+  // Create a role for site administrators.
+  $admin_role = new stdClass();
+  $admin_role->name = 'Administrator';
+  $admin_role->weight = 4;
+  user_role_save($admin_role);
+
+  // Set anonymous user permissions
+  user_role_grant_permissions(DRUPAL_ANONYMOUS_RID, array('access content', $filtered_html_permission));
+
+  // Set authenticated user permissions
+  user_role_grant_permissions(DRUPAL_AUTHENTICATED_RID, array('access content', $filtered_html_permission));
+
+  // Set editor permissions
+  $editor_permissions = array(
+    'access administration pages',
+    'access content',
+    'access content overview',
+    'access contextual links',
+    'access toolbar',
+    'administer nodes',
+    'create page content',
+    'delete any page content',
+    'delete own page content',
+    'delete revisions',
+    'edit any page content',
+    'edit own page content',
+    'revert revisions',
+    'view own unpublished content',
+    'view revisions',
+    'view the administration theme',
+    $filtered_html_permission,
+    $full_html_permission,
+  );
+
+  user_role_grant_permissions($editor_role->rid, $editor_permissions);
+
+  // Set administrator permissions
+  $admin_permissions = array(
+    'access administration pages',
+    'access content',
+    'access content overview',
+    'access contextual links',
+    'access site in maintenance mode',
+    'access site reports',
+    'access toolbar',
+    'access user profiles',
+    'administer blocks',
+    'administer menu',
+    'administer nodes',
+    'administer redirects',
+    'administer shortcuts',
+    'administer url aliases',
+    'administer users',
+    'bypass node access',
+    'create page content',
+    'create url aliases',
+    'customize shortcut links',
+    'delete any page content',
+    'delete own page content',
+    'delete revisions',
+    'edit any page content',
+    'edit own page content',
+    'revert revisions',
+    'switch shortcut sets',
+    'view own unpublished content',
+    'view revisions',
+    'view the administration theme',
+    $filtered_html_permission,
+    $full_html_permission,
+    $raw_permission,
+  );
+
+  user_role_grant_permissions($admin_role->rid, $admin_permissions);
+  // Assign user 1 the "administrator" role.
+  db_insert('users_roles')
+    ->fields(array('uid' => 1, 'rid' => $admin_role->rid))
+    ->execute();
+
+  // Configure DS.
+  variable_set('ft-default', 'theme_ds_field_reset');
+  variable_set('ds_extras_field_template', TRUE);
+}
+
+/**
+* Set up content types
+*/
+function installer_setup_content_types() {
+  // Create page content type
+  $types = array(
+    array(
+      'type' => 'page',
+      'name' => st('Basic page'),
+      'base' => 'node_content',
+      'description' => st("Use <em>basic pages</em> for your static content, such as an 'About us' page."),
+      'custom' => 1,
+      'modified' => 1,
+      'locked' => 0,
+    ),
+    array(
+      'type' => 'article',
+      'name' => st('Article'),
+      'base' => 'node_content',
+      'description' => st('Use <em>articles</em> for time-sensitive content like news, press releases or blog posts.'),
+      'custom' => 1,
+      'modified' => 1,
+      'locked' => 0,
+    ),
+  );
+
+  foreach ($types as $type) {
+    $type = node_type_set_defaults($type);
+    node_type_save($type);
+    node_add_body_field($type);
+  }
+
+  // Default "Basic page" and "Article" to not be promoted and have comments disabled.
+  variable_set('node_options_page', array('status'));
+  variable_set('node_options_article', array('status'));
+
+  // Don't display date and author information for "Basic page" nodes by default.
+  variable_set('node_submitted_page', FALSE);
+
+  // Create an image field named "Image", enabled for the 'article' content type.
+  // Many of the following values will be defaulted, they're included here as an illustrative examples.
+  // See http://api.drupal.org/api/function/field_create_field/7
+
+  $field = array(
+    'field_name' => 'field_image',
+    'type' => 'image',
+    'cardinality' => 1,
+    'locked' => FALSE,
+    'indexes' => array('fid' => array('fid')),
+    'settings' => array(
+      'uri_scheme' => 'public',
+      'default_image' => FALSE,
+    ),
+    'storage' => array(
+      'type' => 'field_sql_storage',
+      'settings' => array(),
+    ),
+  );
+  field_create_field($field);
+
+  // Many of the following values will be defaulted, they're included here as an illustrative examples.
+  // See http://api.drupal.org/api/function/field_create_instance/7
+  $instance = array(
+    'field_name' => 'field_image',
+    'entity_type' => 'node',
+    'label' => 'Image',
+    'bundle' => 'article',
+    'description' => st('Upload an image to go with this article.'),
+    'required' => FALSE,
+
+    'settings' => array(
+      'file_directory' => 'field/image',
+      'file_extensions' => 'png gif jpg jpeg',
+      'max_filesize' => '',
+      'max_resolution' => '',
+      'min_resolution' => '',
+      'alt_field' => TRUE,
+      'title_field' => '',
+    ),
+
+    'widget' => array(
+      'type' => 'image_image',
+      'settings' => array(
+        'progress_indicator' => 'throbber',
+        'preview_image_style' => 'thumbnail',
+      ),
+      'weight' => -1,
+    ),
+
+    'display' => array(
+      'default' => array(
+        'label' => 'hidden',
+        'type' => 'image',
+        'settings' => array('image_style' => 'large', 'image_link' => ''),
+        'weight' => -1,
+      ),
+      'teaser' => array(
+        'label' => 'hidden',
+        'type' => 'image',
+        'settings' => array('image_style' => 'medium', 'image_link' => 'content'),
+        'weight' => -1,
+      ),
+    ),
+  );
+  field_create_instance($instance);
+}
+
+/**
+* Set Seven as the Admin Theme
+*/
+function installer_enable_admin_theme () {
+  // Enable the admin theme.
+  db_update('system')
+    ->fields(array('status' => 1))
+    ->condition('type', 'theme')
+    ->condition('name', 'seven')
+    ->execute();
+  variable_set('admin_theme', 'seven');
+  variable_set('node_admin_theme', '1');
+}
+
+function installer_create_home_link() {
+  $item = array(
+    'link_title' => st('Home'),
+    'link_path' => '<front>',
+    'menu_name' => 'main-menu',
+  );
+  menu_link_save($item);
+}
+
+function installer_setup_textformat() {
+  $textformat_filter = array(
+    'allowed_html' => '<a> <em> <strong> <cite> <blockquote> <code> <ul> <ol> <li> <dl> <dt> <dd> <h2> <h3> <h4> <p> <br/> <img> <table> <thead> <tbody> <tfoot> <tr> <th> <td> <hr/>',
+    'filter_html_help' => 1,
+    'filter_html_nofollow' => 0,
+  );
+  db_update('filter')
+    ->fields(array('settings' => serialize($textformat_filter)))
+    ->condition('format', 'filtered_html')
+    ->condition('name', 'filter_html')
+    ->execute();
+}
+
+function installer_setup_ckeditor() {
+  $ckeditor_settings = array(
+    'ss' => '2',
+    'default' => 't',
+    'show_toggle' => 't',
+    'uicolor' => 'default',
+    'uicolor_user' => 'default',
+    'toolbar' => '[
+      [\'Source\'],
+      [\'Cut\',\'Copy\',\'Paste\',\'PasteText\',\'PasteFromWord\'],
+      [\'Undo\',\'Redo\',\'Find\',\'Replace\',\'-\',\'SelectAll\',\'RemoveFormat\'],
+      [\'Image\',\'Table\',\'HorizontalRule\',\'SpecialChar\'],
+      [\'ShowBlocks\'],
+      \'/\',
+      [\'Format\',\'Styles\'],
+      [\'Bold\',\'Italic\',\'Underline\',\'Strike\'],
+      [\'NumberedList\',\'BulletedList\',\'-\',\'Blockquote\'],
+      [\'Link\',\'Unlink\',\'linkit\']
+  ]',
+    'expand' => 't',
+    'width' => '100%',
+    'lang' => 'en',
+    'auto_lang' => 't',
+    'language_direction' => 'default',
+    'enter_mode' => 'p',
+    'shift_enter_mode' => 'br',
+    'font_format' => 'p;div;pre;address;h2;h3;h4',
+    'custom_formatting' => 'f',
+    'formatting' => array(
+      'custom_formatting_options' => array(
+        'indent' => 'indent',
+        'breakBeforeOpen' => 'breakBeforeOpen',
+        'breakAfterOpen' => 'breakAfterOpen',
+        'breakAfterClose' => 'breakAfterClose',
+        'breakBeforeClose' => 0,
+        'pre_indent' => 0,
+      ),
+    ),
+    'css_mode' => 'theme',
+    'css_path' => '',
+    'css_style' => 'theme',
+    'styles_path' => '',
+    'filebrowser' => 'none',
+    'filebrowser_image' => '',
+    'filebrowser_flash' => '',
+    'UserFilesPath' => '%b%f/',
+    'UserFilesAbsolutePath' => '%d%b%f/',
+    'forcePasteAsPlainText' => 't',
+    'html_entities' => 'f',
+    'scayt_autoStartup' => 'f',
+    'theme_config_js' => 'f',
+    'js_conf' => '',
+    'loadPlugins' => array(
+      'counter' => array(
+        'name' => 'counter',
+        'desc' => 'Plugin to count symbols, symbols without blanks and words',
+        'path' => '%plugin_dir%counter/',
+        'buttons' => false,
+        'default' => 'f',
+      ),
+      'linkit' => array(
+        'name' => 'linkit',
+        'desc' => 'Support for Linkit module',
+        'path' => '%base_path%sites/all/modules/contrib/linkit/editors/ckeditor/',
+        'buttons' => array(
+          'linkit' => array(
+            'label' => 'Linkit',
+            'icon' => 'linkit.png',
+          ),
+        ),
+      ),
+    ),
+  );
+  db_update('ckeditor_settings')
+    ->fields(array('settings' => serialize($ckeditor_settings)))
+    ->condition('name', 'Advanced')
+    ->execute();
+  db_update('ckeditor_settings')
+    ->fields(array('settings' => serialize($ckeditor_settings)))
+    ->condition('name', 'Full')
+    ->execute();
+}
+
+function installer_setup_linkit() {
+  $linkit_profile = new stdClass();
+  $linkit_profile->name = 'wysiwyg';
+  $linkit_profile->admin_title = 'wysiwyg';
+  $linkit_profile->admin_description = '';
+  $linkit_profile->profile_type = '1';
+  $linkit_profile->data = array(
+    'text_formats' => array(
+      'full_html' => 'full_html',
+      'filtered_html' => 'filtered_html',
+      'raw' => 0,
+      'plain_text' => 0,
+    ),
+    'search_plugins' => array(
+      'entity:node' => array(
+        'enabled' => 1,
+        'weight' => -10,
+      ),
+      'entity:taxonomy_term' => array(
+        'enabled' => 1,
+        'weight' => -10,
+      ),
+      'entity:user' => array(
+        'enabled' => 0,
+        'weight' => -10,
+      ),
+    ),
+    'entity:node' => array(
+      'result_description' => 'node:title',
+      'include_unpublished' => 0,
+    ),
+    'entity:taxonomy_term' => array(
+      'result_description' => ''
+    ),
+    'entity:user' => array(
+      'result_description' => ''
+    ),
+    'insert_plugin' => array(
+      'url_method' => 2
+    ),
+    'attribute_plugins' => array(
+      'accesskey' => array(
+        'enabled' => 0,
+        'weight' => -10,
+      ),
+      'target' => array(
+        'enabled' => 0,
+        'weight' => -10,
+      ),
+      'class' => array(
+        'enabled' => 0,
+        'weight' => -10,
+      ),
+      'rel' => array(
+        'enabled' => 0,
+        'weight' => -10,
+      ),
+      'id' => array(
+        'enabled' => 0,
+        'weight' => -10,
+      ),
+
+      'title' => array(
+        'enabled' => 1,
+        'weight' => -10,
+      ),
+    ),
+    'autocomplete' => array(
+      'charLimit' => 3,
+      'wait' => 350,
+      'remoteTimeout' => 10000,
+    ),
+  );
+  ctools_include('export');
+  ctools_export_crud_save('linkit_profiles', $linkit_profile);
+}
